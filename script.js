@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, limit, startAfter } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 
 // Firebase config
 const firebaseConfig = {
@@ -16,7 +16,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Simpan curhat
+let lastVisible = null;  // untuk load more
+
 async function simpanCurhat() {
   const input = document.getElementById("curhatInput").value;
   if (input.trim() === "") {
@@ -31,17 +32,21 @@ async function simpanCurhat() {
 
   await addDoc(collection(db, "curhatan"), curhat);
   document.getElementById("curhatInput").value = "";
-  tampilkanCurhat();
+  tampilkanCurhat(true); // reload awal setelah tambah
 }
 
-// Tampilkan curhat
-async function tampilkanCurhat() {
+async function tampilkanCurhat(reload = false) {
   const daftar = document.getElementById("daftarCurhat");
-  daftar.innerHTML = "<li>Loading...</li>";
 
-  const q = query(collection(db, "curhatan"), orderBy("tanggal", "desc"));
+  if (reload) lastVisible = null; // reset saat reload
+
+  // Batasi 10 curhat per load
+  let q = query(collection(db, "curhatan"), orderBy("tanggal", "desc"), limit(10));
+  if (lastVisible) q = query(collection(db, "curhatan"), orderBy("tanggal", "desc"), startAfter(lastVisible), limit(10));
+
   const querySnapshot = await getDocs(q);
-  daftar.innerHTML = "";
+
+  if (reload) daftar.innerHTML = ""; // clear saat reload
 
   querySnapshot.forEach((docSnap) => {
     const data = docSnap.data();
@@ -52,21 +57,27 @@ async function tampilkanCurhat() {
       <button class="delete-btn" onclick="hapusCurhat('${docSnap.id}')">Hapus</button>
     `;
     daftar.appendChild(li);
+    lastVisible = docSnap; // update lastVisible
   });
 
-  if (daftar.innerHTML === "") {
-    daftar.innerHTML = "<li><i>Belum ada curhatan</i></li>";
+  // Load More button
+  if (!document.getElementById("loadMoreBtn")) {
+    const btn = document.createElement("button");
+    btn.id = "loadMoreBtn";
+    btn.textContent = "Load More";
+    btn.onclick = () => tampilkanCurhat();
+    daftar.parentElement.appendChild(btn);
   }
 }
 
 // Hapus curhat
 async function hapusCurhat(id) {
   await deleteDoc(doc(db, "curhatan", id));
-  tampilkanCurhat();
+  tampilkanCurhat(true); // reload setelah hapus
 }
 
 // Load pertama kali
-document.addEventListener("DOMContentLoaded", tampilkanCurhat);
+document.addEventListener("DOMContentLoaded", () => tampilkanCurhat());
 
 // Supaya bisa dipanggil dari HTML onclick
 window.simpanCurhat = simpanCurhat;
