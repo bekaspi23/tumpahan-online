@@ -16,48 +16,59 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let lastVisible = null;  // untuk load more
+let lastVisible = null;
 
+// Simpan curhat (responsif)
 async function simpanCurhat() {
-  const input = document.getElementById("curhatInput").value;
-  if (input.trim() === "") {
-    alert("Tulis dulu curhatanmu!");
-    return;
-  }
+  const inputEl = document.getElementById("curhatInput");
+  const input = inputEl.value.trim();
+  if (!input) return alert("Tulis dulu curhatanmu!");
 
+  // Buat curhat baru
   const curhat = {
     teks: input,
     tanggal: new Date().toLocaleString()
   };
 
-  await addDoc(collection(db, "curhatan"), curhat);
-  document.getElementById("curhatInput").value = "";
-  tampilkanCurhat(true); // reload awal setelah tambah
+  // Tambahkan langsung ke DOM supaya terasa instan
+  appendCurhatToDOM(curhat, "prepend");
+
+  inputEl.value = "";
+
+  // Simpan ke Firebase di belakang layar
+  try {
+    await addDoc(collection(db, "curhatan"), curhat);
+  } catch (err) {
+    alert("Gagal menyimpan di cloud: " + err);
+  }
 }
 
+// Tampilkan curhat (Load More)
 async function tampilkanCurhat(reload = false) {
   const daftar = document.getElementById("daftarCurhat");
 
-  if (reload) lastVisible = null; // reset saat reload
+  if (reload) lastVisible = null;
 
-  // Batasi 10 curhat per load
-  let q = query(collection(db, "curhatan"), orderBy("tanggal", "desc"), limit(10));
-  if (lastVisible) q = query(collection(db, "curhatan"), orderBy("tanggal", "desc"), startAfter(lastVisible), limit(10));
+  let q = query(
+    collection(db, "curhatan"),
+    orderBy("tanggal", "desc"),
+    limit(10)
+  );
+  if (lastVisible) q = query(
+    collection(db, "curhatan"),
+    orderBy("tanggal", "desc"),
+    startAfter(lastVisible),
+    limit(10)
+  );
 
   const querySnapshot = await getDocs(q);
 
-  if (reload) daftar.innerHTML = ""; // clear saat reload
+  if (reload) daftar.innerHTML = "";
 
   querySnapshot.forEach((docSnap) => {
     const data = docSnap.data();
-    const li = document.createElement("li");
-    li.innerHTML = `
-      ${data.teks}
-      <small>${data.tanggal}</small>
-      <button class="delete-btn" onclick="hapusCurhat('${docSnap.id}')">Hapus</button>
-    `;
-    daftar.appendChild(li);
-    lastVisible = docSnap; // update lastVisible
+    appendCurhatToDOM(data, "append", docSnap.id);
+    lastVisible = docSnap;
   });
 
   // Load More button
@@ -70,14 +81,38 @@ async function tampilkanCurhat(reload = false) {
   }
 }
 
-// Hapus curhat
-async function hapusCurhat(id) {
-  await deleteDoc(doc(db, "curhatan", id));
-  tampilkanCurhat(true); // reload setelah hapus
+// Tambahkan curhat ke DOM
+function appendCurhatToDOM(curhat, position = "append", id = null) {
+  const daftar = document.getElementById("daftarCurhat");
+  const li = document.createElement("li");
+  li.innerHTML = `
+    ${curhat.teks}
+    <small>${curhat.tanggal}</small>
+    ${id ? `<button class="delete-btn" onclick="hapusCurhat('${id}', this)">Hapus</button>` : ""}
+  `;
+  if (position === "prepend") {
+    daftar.insertBefore(li, daftar.firstChild);
+  } else {
+    daftar.appendChild(li);
+  }
+}
+
+// Hapus curhat (responsif)
+async function hapusCurhat(id, btnEl) {
+  // Hapus langsung dari DOM supaya terasa instan
+  const li = btnEl.closest("li");
+  li.remove();
+
+  // Hapus di Firebase di belakang layar
+  try {
+    await deleteDoc(doc(db, "curhatan", id));
+  } catch (err) {
+    alert("Gagal hapus di cloud: " + err);
+  }
 }
 
 // Load pertama kali
-document.addEventListener("DOMContentLoaded", () => tampilkanCurhat());
+document.addEventListener("DOMContentLoaded", () => tampilkanCurhat(true));
 
 // Supaya bisa dipanggil dari HTML onclick
 window.simpanCurhat = simpanCurhat;
