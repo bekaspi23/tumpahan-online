@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="id">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Ruang Curhat Pribadi</title>
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
+        <header>
+            <h1>Ruang Curhat Pribadi</h1>
+            <p>Tulis semua yang kamu rasakan, cuma kamu yang bisa baca 💙</p>
+        </header>
+
+        <main>
+            <section class="form-section">
+                <h2>Tulis Curhatanmu</h2>
+                <textarea
+                    id="curhatInput"
+                    placeholder="Tulis di sini..."
+                    rows="6"></textarea>
+                <button onclick="simpanCurhat()">Simpan Curhat</button>
+            </section>
+
+            <section class="list-section">
+                <h2>Daftar Curhatan</h2>
+                <ul id="daftarCurhat"></ul>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 Ruang Curhat. Semua hak dilindungi.</p>
+        </footer>
+
+        <!-- Import script JS dengan Firebase module -->
+        <script type="module" src="script.js"></script>
+    </body>
+</html>
